@@ -10,6 +10,8 @@ import android.location.provider.ForwardGeocodeRequest
 import android.location.provider.GeocodeProviderBase
 import android.location.provider.ReverseGeocodeRequest
 import android.os.OutcomeReceiver
+import android.util.Log
+import java.io.IOException
 
 private const val TAG = "GeocodeProviderImpl"
 
@@ -25,7 +27,23 @@ class GeocodeProviderImpl(private val context: Context) : GeocodeProviderBase(co
         request: ReverseGeocodeRequest,
         callback: OutcomeReceiver<MutableList<Address>, Throwable>
     ) {
-        TODO("Not yet implemented")
+        try {
+            val geocoder = getGeocoder()
+            return callback.onResult(
+                geocoder.reverseGeocode(
+                    request.latitude,
+                    request.longitude,
+                    request.maxResults,
+                    request.locale
+                ).toMutableList()
+            )
+        } catch (e: IOException) {
+            Log.d(TAG, "unable to reverse geocode: $e")
+            if (Log.isLoggable(TAG, Log.VERBOSE)) {
+                Log.v(TAG, "", e)
+            }
+            return callback.onError(e)
+        }
     }
 
     @Throws(IOException::class)
