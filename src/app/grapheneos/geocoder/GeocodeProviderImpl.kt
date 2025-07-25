@@ -18,14 +18,14 @@ private const val TAG = "GeocodeProviderImpl"
 class GeocodeProviderImpl(private val context: Context) : GeocodeProviderBase(context, TAG) {
     override fun onForwardGeocode(
         request: ForwardGeocodeRequest,
-        callback: OutcomeReceiver<MutableList<Address>, Throwable>
+        callback: OutcomeReceiver<List<Address>, Throwable>
     ) {
         TODO("Not yet implemented")
     }
 
     override fun onReverseGeocode(
         request: ReverseGeocodeRequest,
-        callback: OutcomeReceiver<MutableList<Address>, Throwable>
+        callback: OutcomeReceiver<List<Address>, Throwable>
     ) {
         try {
             val geocoder = getGeocoder()
@@ -35,7 +35,7 @@ class GeocodeProviderImpl(private val context: Context) : GeocodeProviderBase(co
                     request.longitude,
                     request.maxResults,
                     request.locale
-                ).toMutableList()
+                )
             )
         } catch (e: IOException) {
             Log.d(TAG, "unable to reverse geocode: $e")
