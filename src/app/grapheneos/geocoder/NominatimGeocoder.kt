@@ -34,11 +34,17 @@ class NominatimGeocoder : Geocoder {
             "reverse geocode parameters: latitude: $latitude, longitude: $longitude, " +
                     "maxResults: $maxResults, preferredLocale: $preferredLocale"
         }
-        val (baseUrl, enforceModernTls) = getServerBaseUrl()
-
-        val url =
+        val urlSuffix =
             // Nominatim doesn't support returning more than 1 reverse geocoding result
-            URL("$baseUrl/reverse?format=geocodejson&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1&extratags=1")
+            "/reverse?format=geocodejson&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1&extratags=1"
+        return fetch(urlSuffix, preferredLocale)
+    }
+
+    @Throws(IOException::class)
+    private fun fetch(urlSuffix: String, preferredLocale: Locale): List<Address> {
+        val (baseUrl, enforceModernTls) = getServerBaseUrl()
+        val url = URL("$baseUrl$urlSuffix")
+
         val connection = url.openConnection() as HttpsURLConnection
         try {
             if (enforceModernTls) {
@@ -58,8 +64,8 @@ class NominatimGeocoder : Geocoder {
             }
             val responseString = responseBytes.decodeToString()
 
-            // occurs when coordinates are in the middle of the ocean, presumably because there were
-            // no results
+            // occurs when reverse geocode coordinates are in the middle of the ocean, presumably
+            // because there were no results
             if (responseString == "{\"error\":\"Unable to geocode\"}") {
                 return emptyList()
             }
@@ -78,8 +84,7 @@ class NominatimGeocoder : Geocoder {
                 "response features list size: ${response.features?.size}"
             }
 
-            val result = mutableListOf<Address>()
-            response.features?.forEach { feature ->
+            val result = response.features?.map { feature ->
                 val extra = feature.properties.geocoding.extra?.toMutableMap()
                 // we don't know which locale was actually used, so we just assume it was the one
                 // we requested
@@ -100,9 +105,8 @@ class NominatimGeocoder : Geocoder {
                 address.url = extra?.remove("website")
                 address.phone = extra?.remove("phone")
                 address.extras = extra?.let { Bundle(it.toPersistableBundle()) }
-
-                result.add(address)
-            }
+                address
+            } ?: emptyList()
             if (Log.isLoggable(EXTRA_VERBOSE_TAG, Log.VERBOSE)) {
                 result.forEachIndexed { i, address ->
                     Log.v(
