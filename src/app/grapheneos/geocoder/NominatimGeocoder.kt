@@ -24,6 +24,34 @@ class NominatimGeocoder : Geocoder {
     private val tlsSocketFactory = ModernTLSSocketFactory()
 
     @Throws(IOException::class)
+    override fun forwardGeocode(
+        locationName: String,
+        lowerLeftLatitude: Double,
+        lowerLeftLongitude: Double,
+        upperRightLatitude: Double,
+        upperRightLongitude: Double,
+        maxResults: Int,
+        preferredLocale: Locale
+    ): List<Address> {
+        verboseLog(TAG) {
+            "forward geocode parameters: locationName: $locationName, " +
+                    "lowerLeftLatitude: $lowerLeftLatitude, lowerLeftLongitude: $lowerLeftLongitude, " +
+                    "upperRightLatitude: $upperRightLatitude, upperRightLongitude: $upperRightLongitude, " +
+                    "maxResults: $maxResults, preferredLocale: $preferredLocale"
+        }
+        val urlSuffix =
+            "/search?format=geocodejson&q=$locationName&limit=$maxResults&addressdetails=1&extratags=1".let {
+                // add bounding box parameter if it's set for this request
+                if (lowerLeftLatitude == 0.0 && lowerLeftLongitude == 0.0 && upperRightLatitude == 0.0 && upperRightLongitude == 0.0) {
+                    it
+                } else {
+                    "$it&viewbox=$lowerLeftLongitude,$lowerLeftLatitude,$upperRightLongitude,$upperRightLatitude&bounded=1"
+                }
+            }
+        return fetch(urlSuffix, preferredLocale)
+    }
+
+    @Throws(IOException::class)
     override fun reverseGeocode(
         latitude: Double,
         longitude: Double,
