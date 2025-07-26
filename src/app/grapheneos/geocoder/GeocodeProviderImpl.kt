@@ -20,7 +20,26 @@ class GeocodeProviderImpl(private val context: Context) : GeocodeProviderBase(co
         request: ForwardGeocodeRequest,
         callback: OutcomeReceiver<List<Address>, Throwable>
     ) {
-        TODO("Not yet implemented")
+        try {
+            val geocoder = getGeocoder()
+            return callback.onResult(
+                geocoder.forwardGeocode(
+                    request.locationName,
+                    request.lowerLeftLatitude,
+                    request.lowerLeftLongitude,
+                    request.upperRightLatitude,
+                    request.upperRightLongitude,
+                    request.maxResults,
+                    request.locale,
+                )
+            )
+        } catch (e: IOException) {
+            Log.d(TAG, "unable to forward geocode: $e")
+            if (Log.isLoggable(TAG, Log.VERBOSE)) {
+                Log.v(TAG, "", e)
+            }
+            return callback.onError(e)
+        }
     }
 
     override fun onReverseGeocode(
