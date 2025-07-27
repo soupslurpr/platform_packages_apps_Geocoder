@@ -48,7 +48,7 @@ class NominatimGeocoder : Geocoder {
                     "$it&viewbox=$lowerLeftLongitude,$lowerLeftLatitude,$upperRightLongitude,$upperRightLatitude&bounded=1"
                 }
             }
-        return fetch(urlSuffix, preferredLocale)
+        return fetch(urlSuffix, maxResults, preferredLocale)
     }
 
     @Throws(IOException::class)
@@ -65,11 +65,11 @@ class NominatimGeocoder : Geocoder {
         val urlSuffix =
             // Nominatim doesn't support returning more than 1 reverse geocoding result
             "/reverse?format=geocodejson&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1&extratags=1"
-        return fetch(urlSuffix, preferredLocale)
+        return fetch(urlSuffix, maxResults, preferredLocale)
     }
 
     @Throws(IOException::class)
-    private fun fetch(urlSuffix: String, preferredLocale: Locale): List<Address> {
+    private fun fetch(urlSuffix: String, expectedMaxResults: Int, preferredLocale: Locale): List<Address> {
         val (baseUrl, enforceModernTls) = getServerBaseUrl()
         val url = URL("$baseUrl$urlSuffix")
 
@@ -112,7 +112,15 @@ class NominatimGeocoder : Geocoder {
                 "response features list size: ${response.features?.size}"
             }
 
-            val result = response.features?.map { feature ->
+            val result = mutableListOf<Address>()
+            for ((i, feature) in response.features?.withIndex() ?: emptyList()) {
+                if (i >= expectedMaxResults) {
+                    Log.w(
+                        TAG,
+                        "response features size (${response.features?.size}) was more than expected ($expectedMaxResults), truncating"
+                    )
+                    break
+                }
                 val extra = feature.properties.geocoding.extra?.toMutableMap()
                 // we don't know which locale was actually used, so we just assume it was the one
                 // we requested
@@ -133,8 +141,8 @@ class NominatimGeocoder : Geocoder {
                 address.url = extra?.remove("website")
                 address.phone = extra?.remove("phone")
                 address.extras = extra?.let { Bundle(it.toPersistableBundle()) }
-                address
-            } ?: emptyList()
+                result.add(address)
+            }
             if (Log.isLoggable(EXTRA_VERBOSE_TAG, Log.VERBOSE)) {
                 result.forEachIndexed { i, address ->
                     Log.v(
